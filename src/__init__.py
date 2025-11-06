@@ -1,0 +1,2 @@
+"""Medical note simplification pipeline."""
+

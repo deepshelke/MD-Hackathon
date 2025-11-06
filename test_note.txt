@@ -1,0 +1,37 @@
+DISCHARGE SUMMARY
+
+ADMISSION DATE: 11/05/2024
+DISCHARGE DATE: 11/08/2024
+
+CHIEF COMPLAINT: Acute onset of substernal chest pain with associated dyspnea and diaphoresis.
+
+HISTORY OF PRESENT ILLNESS: The patient is a 67-year-old male with a past medical history significant for hypertension, hyperlipidemia, and type 2 diabetes mellitus who presented to the emergency department with acute onset of severe substernal chest pain radiating to the left arm, associated with dyspnea, diaphoresis, and nausea. The pain began approximately 2 hours prior to presentation and was unrelieved by rest. Initial electrocardiogram demonstrated ST-segment elevation in leads II, III, and aVF, consistent with acute ST-elevation myocardial infarction (STEMI) of the inferior wall.
+
+HOSPITAL COURSE: Upon arrival to the emergency department, the patient was immediately taken to the cardiac catheterization laboratory where emergent coronary angiography was performed. The procedure revealed a 95% occlusion of the right coronary artery (RCA) with thrombus formation. Primary percutaneous coronary intervention (PCI) was performed with successful deployment of a drug-eluting stent (DES) to the mid-RCA lesion. Post-procedurally, the patient was transferred to the cardiac intensive care unit (CICU) for close monitoring. Serial cardiac enzymes demonstrated peak troponin I of 8.5 ng/mL, confirming significant myocardial necrosis. Echocardiography revealed new-onset hypokinesis of the inferior wall with an estimated left ventricular ejection fraction (LVEF) of 45%. The patient was initiated on dual antiplatelet therapy (DAPT) consisting of aspirin 81 mg daily and clopidogrel 75 mg daily, as well as high-intensity statin therapy with atorvastatin 80 mg daily. Beta-blocker therapy was initiated with metoprolol succinate 25 mg twice daily. Blood glucose levels were managed with sliding scale insulin, and the patient's diabetes was optimized with metformin 1000 mg twice daily. The patient remained hemodynamically stable throughout the hospitalization with no evidence of arrhythmias or heart failure. By hospital day 3, the patient was ambulating without difficulty and tolerating a regular diet.
+
+DISCHARGE DIAGNOSES:
+1. Acute ST-elevation myocardial infarction (STEMI), inferior wall, status post primary PCI with DES placement
+2. Coronary artery disease, single-vessel disease involving the RCA
+3. Hypertension, controlled
+4. Hyperlipidemia, controlled
+5. Type 2 diabetes mellitus, controlled
+
+DISCHARGE MEDICATIONS:
+1. Aspirin 81 mg orally once daily - for secondary prevention of cardiovascular events
+2. Clopidogrel 75 mg orally once daily - continue for 12 months to prevent stent thrombosis
+3. Atorvastatin 80 mg orally once daily at bedtime - for lipid management and cardiovascular risk reduction
+4. Metoprolol succinate 25 mg orally twice daily - for heart rate control and cardioprotection
+5. Metformin 1000 mg orally twice daily with meals - for diabetes management
+6. Lisinopril 10 mg orally once daily - for blood pressure control and cardiac remodeling
+
+DISCHARGE INSTRUCTIONS:
+The patient is advised to follow up with cardiology within 7-10 days for post-PCI evaluation. Cardiology will assess the need for repeat echocardiography and further optimization of medical therapy. The patient should also follow up with primary care physician within 2 weeks for diabetes and hypertension management. The patient is instructed to call 911 immediately if experiencing chest pain, shortness of breath, palpitations, or signs of heart failure such as lower extremity edema or orthopnea. The patient should avoid heavy lifting greater than 10 pounds for the next 7 days to prevent bleeding at the catheterization site. The patient is counseled on the importance of medication compliance, particularly the dual antiplatelet therapy, as premature discontinuation may result in stent thrombosis and potentially fatal outcomes. Dietary modifications include a low-sodium, low-fat, diabetic diet. The patient should continue cardiac rehabilitation program as an outpatient, beginning 2 weeks post-discharge.
+
+ALLERGIES: No known drug allergies.
+
+ACTIVITY: The patient may resume normal activities as tolerated, avoiding strenuous exercise for 2 weeks. Cardiac rehabilitation will be initiated on an outpatient basis.
+
+DIET: Low-sodium, low-fat, diabetic diet. Continue current diabetic meal plan.
+
+FOLLOW-UP: Cardiology appointment scheduled for 11/15/2024 at 10:00 AM. Primary care physician appointment scheduled for 11/18/2024 at 2:00 PM.
+
