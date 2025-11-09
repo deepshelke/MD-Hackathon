@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Environment
+.env
+.env.local
+
+# Credentials
+credentials/
+*.json
+!package.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Output
+output/
+*.log
+
+# Raw data
+raw_notes/
+raw_dataset/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deployment
+Dockerfile
+.dockerignore
+

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: medical-note-simplifier
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      # Add these in Render dashboard:
+      # - FIREBASE_CREDENTIALS_PATH (or use individual Firebase env vars)
+      # - HF_TOKEN
+      # - SECRET_KEY
+

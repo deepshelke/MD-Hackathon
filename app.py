@@ -266,5 +266,9 @@ def health():
     return jsonify({'status': 'healthy'})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use PORT environment variable if available (for production hosting)
+    port = int(os.environ.get('PORT', 5000))
+    # Only enable debug in development
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(debug=debug, host='0.0.0.0', port=port)
 

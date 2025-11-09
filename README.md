@@ -239,6 +239,18 @@ The repository includes scripts for processing medical notes:
 - **Input**: Structured medical note sections
 - **Output**: Simplified patient-friendly language
 
+## 🌐 Deployment
+
+Want to host this app so your teammates can access it without downloading anything locally?
+
+**Quick Deploy (5 minutes):**
+- See [QUICK_DEPLOY_RENDER.md](QUICK_DEPLOY_RENDER.md) for step-by-step Render deployment
+- See [DEPLOYMENT.md](DEPLOYMENT.md) for all hosting options (Render, Railway, PythonAnywhere, Google Cloud Run)
+
+**Recommended:** [Render](https://render.com) - Free tier available, one-click deployment from GitHub, automatic HTTPS.
+
+**Cost:** Free tier available (spins down after inactivity) or $7/month for always-on.
+
 ## 🤝 Contributing
 
 For questions or issues, contact Deep (deep).
