@@ -1,2 +1,2 @@
-"""Medical note simplification pipeline."""
+"""CareNotes - Medical note simplification pipeline."""
 

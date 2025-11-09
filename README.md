@@ -1,4 +1,4 @@
-# Medical Note Simplifier
+# CareNotes
 
 A web application that simplifies complex medical discharge notes into patient-friendly language using AI. Built with Flask, Hugging Face Inference API, and Firestore.
 

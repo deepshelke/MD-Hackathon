@@ -8,7 +8,7 @@ MAX_PROMPT_LENGTH = 10000  # Increased default, but trimming logic still works i
 
 
 class PromptBuilder:
-    """Builds system and user prompts for medical note simplification."""
+    """Builds system and user prompts for CareNotes - medical note simplification."""
     
     SYSTEM_PROMPT = """You are a medical communication specialist. Simplify medical discharge notes into patient-friendly language that anyone can understand.
 

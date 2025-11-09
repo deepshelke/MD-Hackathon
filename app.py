@@ -1,5 +1,5 @@
 """
-Flask application for Medical Note Simplification.
+Flask application for CareNotes - Simplifying medical discharge notes.
 """
 import os
 import json
