@@ -2,44 +2,250 @@
 
 A web application that simplifies complex medical discharge notes into patient-friendly language using AI. Built with Flask, Hugging Face Inference API, and Firestore.
 
-## 🚀 Quick Start - Step by Step
+## 🚀 How to Run This Repository - Step by Step Guide
+
+Follow these steps to set up and run CareNotes on your local machine:
+
+### Prerequisites
+Before you begin, make sure you have:
+- **Python 3.11+** installed on your system
+- **Git** installed
+- **pip** (Python package manager)
+- Access to Firebase credentials (contact Deep for access)
+- Hugging Face API token (contact Deep for access)
+
+---
 
 ### Step 1: Clone the Repository
+
+Open your terminal/command prompt and run:
+
 ```bash
-git clone <repository-url>
+git clone https://github.com/deepshelke/MD-Hackathon.git
 cd MD-Hackathon
 ```
 
-### Step 2: Install Dependencies
+This will download the repository and navigate into the project directory.
+
+---
+
+### Step 2: Create a Virtual Environment (Recommended)
+
+It's best practice to use a virtual environment to isolate project dependencies:
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+
+# On Windows:
+venv\Scripts\activate
+```
+
+You should see `(venv)` in your terminal prompt, indicating the virtual environment is active.
+
+---
+
+### Step 3: Install Dependencies
+
+Install all required Python packages:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 3: Set Up Environment Variables
-**For environment variables and credentials, please contact Deep (deep) to get access to:**
-- `FIREBASE_CREDENTIALS_PATH`: Path to Firebase service account JSON file
-- `HF_TOKEN`: Your Hugging Face API token
+This will install:
+- Flask (web framework)
+- Google Cloud Firestore (database client)
+- Hugging Face Hub (AI API client)
+- And all other dependencies
 
-Create a `.env` file in the root directory:
+**Note:** This may take a few minutes depending on your internet connection.
+
+---
+
+### Step 4: Set Up Environment Variables
+
+**Important:** Contact Deep (deep) to obtain the following credentials:
+- Firebase service account JSON file
+- Hugging Face API token
+
+#### 4.1: Create `.env` File
+
+Create a `.env` file in the root directory of the project:
+
+```bash
+# On macOS/Linux:
+touch .env
+
+# On Windows:
+type nul > .env
+```
+
+#### 4.2: Add Environment Variables
+
+Open the `.env` file in a text editor and add:
+
 ```bash
 FIREBASE_CREDENTIALS_PATH=./credentials/firebase-service-account.json
 HF_TOKEN=your_huggingface_token_here
 ```
 
-### Step 4: Run the Application
+**Replace:**
+- `your_huggingface_token_here` with your actual Hugging Face API token
+- Make sure the Firebase credentials file path is correct
+
+#### 4.3: Add Firebase Credentials
+
+1. Place your Firebase service account JSON file in the `credentials/` directory
+2. If the `credentials/` folder doesn't exist, create it:
+   ```bash
+   mkdir credentials
+   ```
+3. Copy your Firebase JSON file to `credentials/firebase-service-account.json`
+
+**Alternative:** You can also set Firebase credentials using individual environment variables:
+```bash
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-client-email
+FIREBASE_PRIVATE_KEY_ID=your-private-key-id
+FIREBASE_PRIVATE_KEY=your-private-key
+```
+
+---
+
+### Step 5: Verify Installation
+
+Check that everything is set up correctly:
+
+```bash
+# Verify Python version (should be 3.11+)
+python --version
+
+# Verify Flask is installed
+python -c "import flask; print(flask.__version__)"
+
+# Verify Firestore client is installed
+python -c "import google.cloud.firestore; print('Firestore installed')"
+
+# Verify Hugging Face client is installed
+python -c "import huggingface_hub; print('Hugging Face Hub installed')"
+```
+
+If all commands run without errors, you're ready to proceed!
+
+---
+
+### Step 6: Run the Application
+
+Start the Flask development server:
+
 ```bash
 python run.py
 ```
 
-The application will start on `http://localhost:5000`
-
-### Step 5: Access the Web Interface
-Open your browser and navigate to:
+You should see output like:
 ```
-http://localhost:5000
+ * Running on http://0.0.0.0:5000
+ * Debug mode: on
 ```
 
-Enter a Note ID and HADM ID from Firestore, then click "Simplify Note" to see the simplified output.
+**Note:** The application runs on port 5000 by default. If port 5000 is already in use, you'll see an error. In that case, you can:
+- Stop the other application using port 5000, or
+- Modify `run.py` to use a different port
+
+---
+
+### Step 7: Access the Web Interface
+
+1. Open your web browser
+2. Navigate to: `http://localhost:5000`
+3. You should see the CareNotes interface with:
+   - Input fields for Note ID and HADM ID
+   - A "Simplify" button
+
+---
+
+### Step 8: Test the Application
+
+1. **Get Test IDs:** Contact Deep to get sample Note ID and HADM ID from Firestore, or use the `patients_list.csv` file if available
+
+2. **Enter IDs:**
+   - Note ID: e.g., `10000032-DS-21`
+   - HADM ID: e.g., `22595853`
+
+3. **Click "Simplify"** button
+
+4. **Wait for processing** (this may take 10-30 seconds as it:
+   - Fetches the note from Firestore
+   - Sends it to MedLlama-3 AI model
+   - Generates simplified output)
+
+5. **View Results:** You should see the simplified medical note with sections:
+   - 📋 Summary
+   - ✅ Actions Needed
+   - 💊 Medications Explained
+   - ⚠️ Safety Information
+   - 📖 Glossary
+
+---
+
+### Step 9: Stop the Application
+
+When you're done testing, stop the server by pressing:
+```
+Ctrl + C
+```
+in your terminal.
+
+---
+
+## ✅ Success Checklist
+
+You've successfully set up CareNotes if:
+- ✅ Repository cloned
+- ✅ Virtual environment created and activated
+- ✅ Dependencies installed
+- ✅ `.env` file created with credentials
+- ✅ Firebase credentials file in place
+- ✅ Application starts without errors
+- ✅ Web interface loads at `http://localhost:5000`
+- ✅ You can simplify a medical note successfully
+
+---
+
+## 🆘 Common Issues and Solutions
+
+### Issue: "Module not found" error
+**Solution:** Make sure you activated the virtual environment and installed dependencies:
+```bash
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
+
+### Issue: "Port 5000 already in use"
+**Solution:** Stop other applications using port 5000, or change the port in `run.py`
+
+### Issue: "Firebase credentials not found"
+**Solution:** 
+- Verify the path in `.env` is correct
+- Check that the JSON file exists in the `credentials/` folder
+- Ensure the file has proper read permissions
+
+### Issue: "HF_TOKEN not set"
+**Solution:** 
+- Verify your `.env` file has `HF_TOKEN=your_actual_token`
+- Make sure there are no spaces around the `=` sign
+- Restart the application after updating `.env`
+
+### Issue: "Note not found in Firestore"
+**Solution:** 
+- Verify the Note ID and HADM ID are correct
+- Check that the note exists in Firestore
+- Verify Firebase credentials have read permissions
 
 ---
 
