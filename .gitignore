@@ -29,6 +29,10 @@ dist/
 output/
 *.log
 
+# Raw data
+raw_notes/
+raw_dataset/
+
 # OS
 .DS_Store
 Thumbs.db

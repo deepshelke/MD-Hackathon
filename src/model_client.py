@@ -4,8 +4,13 @@ Uses huggingface_hub InferenceClient (recommended approach).
 """
 import os
 import json
+import logging
 from typing import Dict, Optional, Any
 import time
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     from huggingface_hub import InferenceClient
@@ -51,11 +56,11 @@ class HuggingFaceClient:
     def call_llm(self, 
                  system_prompt: str, 
                  user_prompt: str,
-                 max_tokens: int = 900,
+                 max_tokens: int = 2000,
                  temperature: float = 0.2,
                  top_p: float = 0.95,
-                 retry_count: int = 3,
-                 retry_delay: int = 5) -> str:
+                 retry_count: int = 1,  # Not used - only try once
+                 retry_delay: int = 5) -> str:  # Not used - no retries
         """
         Call the LLM via Hugging Face Inference API.
         
@@ -71,50 +76,82 @@ class HuggingFaceClient:
         Returns:
             Generated text response from the model
         """
-        # Combine system and user prompts
-        # For text generation models, we format as a direct instruction
-        # Format: "{system}\n\n{user}"
-        full_prompt = f"{system_prompt}\n\n{user_prompt}"
+        # Log prompt details for debugging
+        logger.info(f"📤 Sending prompt to model:")
+        logger.info(f"   System prompt length: {len(system_prompt)} chars")
+        logger.info(f"   User prompt length: {len(user_prompt)} chars")
+        logger.info(f"   User prompt preview (first 500 chars): {user_prompt[:500]}")
+        logger.info(f"   User prompt contains 'START OF MEDICAL DISCHARGE NOTE': {'START OF MEDICAL DISCHARGE NOTE' in user_prompt}")
+        logger.info(f"   User prompt contains 'END OF MEDICAL DISCHARGE NOTE': {'END OF MEDICAL DISCHARGE NOTE' in user_prompt}")
         
-        for attempt in range(retry_count):
-            try:
-                # Use InferenceClient for text generation
-                response = self.client.text_generation(
-                    prompt=full_prompt,
-                    max_new_tokens=max_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    return_full_text=False
-                )
-                
-                return response.strip()
-                
-            except Exception as e:
-                error_str = str(e).lower()
-                
-                # Handle model loading (503 equivalent)
-                if "loading" in error_str or "503" in error_str:
-                    if attempt < retry_count - 1:
-                        print(f"Model loading... waiting {retry_delay} seconds (attempt {attempt + 1}/{retry_count})")
-                        time.sleep(retry_delay)
-                        continue
-                
-                # Handle rate limiting (429 equivalent)
-                if "429" in error_str or "rate limit" in error_str:
-                    if attempt < retry_count - 1:
-                        print(f"Rate limit exceeded. Waiting {retry_delay} seconds...")
-                        time.sleep(retry_delay)
-                        continue
-                
-                # If last attempt, raise the error
-                if attempt == retry_count - 1:
-                    raise Exception(f"Failed to call Hugging Face API after {retry_count} attempts: {e}")
-                
-                # For other errors, wait and retry
-                print(f"Request failed: {e}. Retrying in {retry_delay} seconds...")
-                time.sleep(retry_delay)
+        # Check if note sections are present in user prompt
+        note_markers_found = user_prompt.count("=== START OF MEDICAL DISCHARGE NOTE ===")
+        logger.info(f"   Note start markers found: {note_markers_found}")
         
-        raise Exception("Failed to get response from Hugging Face API")
+        # Log a sample of the user prompt to see if sections are populated
+        if "HISTORY OF PRESENT ILLNESS:" in user_prompt:
+            hpi_start = user_prompt.find("HISTORY OF PRESENT ILLNESS:")
+            hpi_end = min(hpi_start + 200, len(user_prompt))
+            logger.info(f"   HPI section sample: {user_prompt[hpi_start:hpi_end]}")
+        
+        # Only try once - no retries to avoid wasting credits
+        try:
+            # Format prompt using Llama 3 chat template format
+            # MedLlama-3 expects this exact format with special tokens
+            combined_prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+{system_prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>
+{user_prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+"""
+            
+            logger.info(f"🔄 Calling Hugging Face API...")
+            logger.info(f"   Model: {self.model_name}")
+            logger.info(f"   Max tokens: {max_tokens}")
+            logger.info(f"   Temperature: {temperature}")
+            logger.info(f"   Combined prompt length: {len(combined_prompt)} chars")
+            logger.info(f"   Using Llama 3 chat template format")
+            
+            response = self.client.text_generation(
+                prompt=combined_prompt,
+                max_new_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                return_full_text=False
+            )
+            
+            # Convert to string if needed
+            if response is None:
+                response = ""
+            else:
+                response = str(response)
+            
+            # Check response type and content
+            response_type = type(response).__name__
+            response_length = len(response) if response else 0
+            
+            logger.info(f"📥 Received response:")
+            logger.info(f"   Response type: {response_type}")
+            logger.info(f"   Response length: {response_length} chars")
+            logger.info(f"   Response preview (first 500 chars): {response[:500] if response else 'EMPTY'}")
+            
+            # If empty response, provide detailed error
+            if not response or len(response.strip()) == 0:
+                raise Exception(f"Empty response from LLM (type: {response_type}, length: {response_length}) - API call succeeded but model returned no output")
+            
+            return response.strip()
+            
+        except Exception as e:
+            error_str = str(e).lower()
+            
+            # Handle payment required (402) - fail immediately
+            if "402" in error_str or "payment" in error_str:
+                raise Exception("API requires payment - free tier limit reached")
+            
+            # Handle permission errors (403)
+            if "403" in error_str or "forbidden" in error_str or "permission" in error_str:
+                raise Exception("API permission denied - token needs Inference Providers permission")
+            
+            # For all other errors, fail immediately (no retries)
+            raise Exception(f"Failed to call Hugging Face API: {e}")
     
     def simplify_note(self, 
                      system_prompt: str,

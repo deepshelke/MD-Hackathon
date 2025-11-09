@@ -17,13 +17,22 @@
         <!-- Input Section -->
         <div class="input-section">
             <div class="input-container">
-                <input 
-                    type="text" 
-                    id="noteIdInput" 
-                    class="note-input" 
-                    placeholder="Enter Note ID from Firestore (e.g., note_001 or MIMIC_12345_d_1)"
-                    autocomplete="off"
-                >
+                <div class="input-fields">
+                    <input 
+                        type="text" 
+                        id="noteIdInput" 
+                        class="note-input" 
+                        placeholder="Note ID (e.g., 10000032-DS-21)"
+                        autocomplete="off"
+                    >
+                    <input 
+                        type="text" 
+                        id="hadmIdInput" 
+                        class="note-input" 
+                        placeholder="HADM ID (e.g., 22595853)"
+                        autocomplete="off"
+                    >
+                </div>
                 <button id="simplifyBtn" class="simplify-btn">
                     <span class="btn-text">Simplify</span>
                     <span class="btn-loader" style="display: none;">
@@ -34,16 +43,8 @@
             <div class="test-mode-toggle">
                 <label class="toggle-label">
                     <input type="checkbox" id="testModeToggle">
-                    <span>Test Mode (use sample text instead of Firestore)</span>
+                    <span>Test Mode (use sample output - no API call)</span>
                 </label>
-            </div>
-            <div id="testModeSection" class="test-mode-section" style="display: none;">
-                <textarea 
-                    id="noteTextInput" 
-                    class="note-textarea" 
-                    placeholder="Enter medical note text here for testing..."
-                    rows="6"
-                ></textarea>
             </div>
         </div>
 
@@ -57,32 +58,9 @@
 
         <!-- Results Section -->
         <div id="resultsSection" class="results-section" style="display: none;">
-            <!-- Summary Card -->
-            <div class="card summary-card">
-                <h2 class="card-title">📋 Plain Summary</h2>
-                <div id="summaryContent" class="card-content"></div>
+            <div class="output-container">
+                <div id="outputContent" class="output-content"></div>
             </div>
-
-            <!-- Actions Card -->
-            <div class="card actions-card">
-                <h2 class="card-title">✅ What To Do Next</h2>
-                <div id="actionsContent" class="card-content"></div>
-            </div>
-
-            <!-- Medications Card -->
-            <div class="card medications-card">
-                <h2 class="card-title">💊 Your Medications</h2>
-                <div id="medicationsContent" class="card-content"></div>
-            </div>
-
-            <!-- Glossary Card -->
-            <div class="card glossary-card">
-                <h2 class="card-title">📖 Terms Explained</h2>
-                <div id="glossaryContent" class="card-content"></div>
-            </div>
-
-            <!-- Reading Level Badge -->
-            <div id="readingLevelBadge" class="reading-level-badge" style="display: none;"></div>
         </div>
     </div>
 

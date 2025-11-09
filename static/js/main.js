@@ -1,17 +1,41 @@
 // DOM Elements
 const noteIdInput = document.getElementById('noteIdInput');
-const noteTextInput = document.getElementById('noteTextInput');
+const hadmIdInput = document.getElementById('hadmIdInput');
 const testModeToggle = document.getElementById('testModeToggle');
-const testModeSection = document.getElementById('testModeSection');
 const simplifyBtn = document.getElementById('simplifyBtn');
 const errorMessage = document.getElementById('errorMessage');
 const successMessage = document.getElementById('successMessage');
 const resultsSection = document.getElementById('resultsSection');
-const summaryContent = document.getElementById('summaryContent');
-const actionsContent = document.getElementById('actionsContent');
-const medicationsContent = document.getElementById('medicationsContent');
-const glossaryContent = document.getElementById('glossaryContent');
-const readingLevelBadge = document.getElementById('readingLevelBadge');
+const outputContent = document.getElementById('outputContent');
+
+// Sample output for test mode (from our actual test)
+const SAMPLE_OUTPUT = `Here is the simplified version of the medical discharge note:
+
+Summary:
+- You have ascites, which is fluid buildup in your abdomen, caused by portal hypertension due to liver disease.
+- You were hospitalized because of worsening abdominal distension and discomfort, as well as confusion.
+- You were started on diuretics (Furosemide and Spironolactone) to help reduce the fluid buildup.
+- You need to follow up with your primary care physician and a liver specialist for further evaluation and treatment.
+
+Actions Needed:
+- Take Furosemide 40 mg by mouth daily as prescribed.
+- Take Spironolactone 50 mg by mouth daily as prescribed.
+- Follow a diet recommended by your doctor to manage your condition.
+- Attend follow-up appointments with your primary care physician and liver specialist as scheduled.
+- Monitor for any signs of worsening symptoms or side effects from medications.
+
+Medications Explained:
+- Furosemide: This medication helps reduce fluid buildup in your body. Take it by mouth once daily as prescribed.
+- Spironolactone: This medication also helps reduce fluid buildup in your body. Take it by mouth once daily as prescribed.
+- Both medications may cause side effects such as dizziness, weakness, or electrolyte imbalances. If you experience any concerning symptoms, contact your doctor.
+
+Glossary:
+- Ascites: Fluid buildup in the abdomen.
+- Portal Hypertension: Increased pressure in the portal vein, which carries blood from the intestines to the liver.
+- Diuretics: Medications that help remove excess fluid from the body.
+- Liver Disease: Damage to the liver, which can lead to various complications such as ascites.
+- Primary Care Physician: Your regular doctor who provides ongoing medical care.
+- Liver Specialist: A doctor who specializes in treating liver diseases.`;
 
 // Event Listeners
 simplifyBtn.addEventListener('click', handleSimplify);
@@ -20,17 +44,18 @@ noteIdInput.addEventListener('keypress', (e) => {
         handleSimplify();
     }
 });
-noteTextInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey && testModeToggle.checked) {
+hadmIdInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !testModeToggle.checked) {
         handleSimplify();
     }
 });
 testModeToggle.addEventListener('change', (e) => {
-    testModeSection.style.display = e.target.checked ? 'block' : 'none';
     if (e.target.checked) {
-        noteIdInput.placeholder = 'Note ID not needed in test mode';
+        noteIdInput.placeholder = 'Note ID (test mode - will use sample)';
+        hadmIdInput.placeholder = 'HADM ID (test mode - will use sample)';
     } else {
-        noteIdInput.placeholder = 'Enter Note ID from Firestore (e.g., note_001 or MIMIC_12345_d_1)';
+        noteIdInput.placeholder = 'Note ID (e.g., 10000032-DS-21)';
+        hadmIdInput.placeholder = 'HADM ID (e.g., 22595853)';
     }
 });
 
@@ -38,17 +63,19 @@ testModeToggle.addEventListener('change', (e) => {
 async function handleSimplify() {
     const isTestMode = testModeToggle.checked;
     const noteId = noteIdInput.value.trim();
-    const noteText = noteTextInput.value.trim();
+    const hadmId = hadmIdInput.value.trim();
     
     // Validation
     if (isTestMode) {
-        if (!noteText) {
-            showError('Please enter medical note text for testing');
-            return;
-        }
+        // Test mode: use sample output
+        hideMessages();
+        hideResults();
+        showSuccess();
+        displayResults({ simplified_output: SAMPLE_OUTPUT });
+        return;
     } else {
-        if (!noteId) {
-            showError('Please enter a Note ID from Firestore');
+        if (!noteId || !hadmId) {
+            showError('Please enter both Note ID and HADM ID');
             return;
         }
     }
@@ -62,9 +89,10 @@ async function handleSimplify() {
     
     try {
         // Make API request
-        const requestBody = isTestMode 
-            ? { note_text: noteText }
-            : { note_id: noteId };
+        const requestBody = { 
+            note_id: noteId,
+            hadm_id: hadmId
+        };
             
         const response = await fetch('/api/simplify', {
             method: 'POST',
@@ -91,107 +119,271 @@ async function handleSimplify() {
         }
         
     } catch (error) {
-        showError(error.message || 'An error occurred while processing the note');
+        // Handle network errors
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            showError('Network error: Could not connect to server. Please check if the server is running.');
+        } else {
+            showError(error.message || 'An error occurred while processing the note');
+        }
     } finally {
         setLoading(false);
     }
 }
 
-// Display Results
+// Display Results - Parse plain text output and format nicely
 function displayResults(data) {
-    // Check if this is a fallback response (not properly formatted JSON)
-    if (data._note) {
-        // Show a warning that output wasn't in JSON format
-        const warning = document.createElement('div');
-        warning.className = 'warning-message';
-        warning.innerHTML = `⚠️ ${data._note}`;
-        resultsSection.insertBefore(warning, resultsSection.firstChild);
-    }
+    let output = '';
     
-    // Display Summary
-    if (data.summary && data.summary.length > 0) {
-        const summaryList = data.summary.map(item => `<li>${item}</li>`).join('');
-        summaryContent.innerHTML = `<ul>${summaryList}</ul>`;
+    // Check if we have simplified_output (plain text from model)
+    if (data.simplified_output) {
+        output = formatPlainTextOutput(data.simplified_output);
     } else if (data._raw_output) {
-        // If no summary but we have raw output, show it
-        summaryContent.innerHTML = `<p style="color: #3c4043; white-space: pre-wrap;">${data._raw_output}</p>`;
+        // Fallback to raw output
+        output = formatPlainTextOutput(data._raw_output);
+    } else if (data.summary || data.actions || data.medications || data.glossary) {
+        // If we have structured data, format it
+        output = formatStructuredOutput(data);
     } else {
-        summaryContent.innerHTML = '<p style="color: #9aa0a6;">No summary available</p>';
+        output = '<p style="color: #9aa0a6;">No output available</p>';
     }
     
-    // Display Actions
-    if (data.actions && data.actions.length > 0) {
-        const actionsHtml = data.actions.map(action => {
-            const task = action.task || 'Not specified';
-            const when = action.when || 'Not specified';
-            const who = action.who || 'Not specified';
-            return `
-                <div class="action-item">
-                    <strong>${task}</strong>
-                    <small>When: ${when} | Who: ${who}</small>
-                </div>
-            `;
-        }).join('');
-        actionsContent.innerHTML = actionsHtml;
-    } else {
-        actionsContent.innerHTML = '<p style="color: #9aa0a6;">No actions specified</p>';
-    }
-    
-    // Display Medications
-    if (data.medications && data.medications.length > 0) {
-        const medicationsHtml = data.medications.map(med => {
-            const name = med.name || 'Not specified';
-            const why = med.why || 'Not specified';
-            const how = med.how_to_take || 'Not specified';
-            const schedule = med.schedule || 'Not specified';
-            const cautions = med.cautions && med.cautions !== 'Not specified' 
-                ? `<p class="caution"><strong>⚠️ Cautions:</strong> ${med.cautions}</p>` 
-                : '';
-            return `
-                <div class="medication-item">
-                    <h4>${name}</h4>
-                    <p><strong>Why:</strong> ${why}</p>
-                    <p><strong>How to take:</strong> ${how}</p>
-                    <p><strong>Schedule:</strong> ${schedule}</p>
-                    ${cautions}
-                </div>
-            `;
-        }).join('');
-        medicationsContent.innerHTML = medicationsHtml;
-    } else {
-        medicationsContent.innerHTML = '<p style="color: #9aa0a6;">No medications listed</p>';
-    }
-    
-    // Display Glossary
-    if (data.glossary && data.glossary.length > 0) {
-        const glossaryHtml = data.glossary.map(term => {
-            const termName = term.term || 'Not specified';
-            const plain = term.plain || 'Not specified';
-            return `
-                <div class="glossary-item">
-                    <strong>${termName}</strong>
-                    <p>${plain}</p>
-                </div>
-            `;
-        }).join('');
-        glossaryContent.innerHTML = glossaryHtml;
-    } else {
-        glossaryContent.innerHTML = '<p style="color: #9aa0a6;">No glossary terms available</p>';
-    }
-    
-    // Display Reading Level
-    if (data.readability_grade) {
-        readingLevelBadge.textContent = `📊 Reading Level: Grade ${data.readability_grade}`;
-        readingLevelBadge.style.display = 'inline-block';
-    } else {
-        readingLevelBadge.style.display = 'none';
-    }
+    outputContent.innerHTML = output;
     
     // Show results section
     resultsSection.style.display = 'block';
     
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Format plain text output from model
+function formatPlainTextOutput(text) {
+    // Remove any truncation markers or incomplete text
+    if (text.includes('...') && text.length > 5000) {
+        // Check if text appears to be cut off mid-sentence
+        const lastSentence = text.substring(text.length - 100);
+        if (!lastSentence.match(/[.!?]$/)) {
+            // Text might be truncated - try to find last complete section
+            const sections = text.split(/\n(?=[📋✅💊⚠️📖])/);
+            if (sections.length > 1) {
+                // Keep all complete sections
+                text = sections.slice(0, -1).join('\n');
+            }
+        }
+    }
+    
+    let html = '';
+    const lines = text.split('\n');
+    let inList = false;
+    let inSubList = false;
+    let skipIntro = true; // Skip intro line like "Here is the simplified version..."
+    let currentSection = '';
+    let sectionCount = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        if (!line) {
+            if (inSubList) {
+                html += '</ul>';
+                inSubList = false;
+            }
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            continue;
+        }
+        
+        // Skip intro lines (common patterns)
+        if (skipIntro && (
+            line.toLowerCase().includes('here is the simplified') ||
+            line.toLowerCase().includes('simplified version') ||
+            line.toLowerCase().includes('medical discharge note')
+        )) {
+            continue; // Skip intro line
+        }
+        skipIntro = false; // After first non-intro line, stop skipping
+        
+        // Check if this is a main section header (starts with emoji or is a section title)
+        // Also check if line starts with section title followed by colon (e.g., "Summary: content")
+        const isSectionHeader = line.match(/^[📋✅💊⚠️📖]/) || 
+                                 (line.match(/^(Summary|Actions Needed|Medications Explained|Safety Information|Glossary):?\s*/i) && (line.length < 50 || line.match(/^(Summary|Actions Needed|Medications Explained|Safety Information|Glossary):\s*/i)));
+        
+        if (isSectionHeader) {
+            if (inSubList) {
+                html += '</ul>';
+                inSubList = false;
+            }
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            // Close previous section if exists
+            if (sectionCount > 0) {
+                html += '</div></div>'; // Close section-content and section-wrapper
+            }
+            // Extract section title and content
+            let sectionTitle = line.replace(/^[📋✅💊⚠️📖]\s*/, '').trim();
+            let sectionContent = '';
+            
+            // If line has content after colon (e.g., "Summary: content here")
+            if (sectionTitle.includes(':')) {
+                const parts = sectionTitle.split(':', 2);
+                sectionTitle = parts[0].trim();
+                sectionContent = parts[1] ? parts[1].trim() : '';
+            } else {
+                sectionTitle = sectionTitle.replace(':', '').trim();
+            }
+            
+            sectionCount++;
+            const sectionId = `section-${sectionCount}`;
+            html += `<div class="section-wrapper" id="${sectionId}">`;
+            html += `<h2 class="section-header">${formatSectionTitle(sectionTitle)}</h2>`;
+            html += `<div class="section-content">`;
+            
+            // If there's content on the same line, add it
+            if (sectionContent) {
+                html += `<p>${escapeHtml(sectionContent)}</p>`;
+            }
+            
+            currentSection = sectionTitle.toLowerCase();
+        }
+        // Check if this is a subsection header (like "Wound Care:", "Activity Restrictions:")
+        else if (line.endsWith(':') && !line.startsWith('-') && !line.startsWith('•') && line.length < 50 && !line.match(/^[📋✅💊⚠️📖]/)) {
+            if (inSubList) {
+                html += '</ul>';
+                inSubList = false;
+            }
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            const subsectionTitle = line.slice(0, -1).trim();
+            html += `<h3>${escapeHtml(subsectionTitle)}</h3>`;
+        }
+        // Check if this is a numbered medication item (starts with number and period)
+        else if (line.match(/^\d+\.\s+/)) {
+            if (inSubList) {
+                html += '</ul>';
+                inSubList = false;
+            }
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            const content = line.replace(/^\d+\.\s+/, '').trim();
+            html += `<div class="medication-item"><h4>${escapeHtml(content)}</h4>`;
+            // Next lines might be sub-bullets for this medication
+            inSubList = true;
+            html += '<ul>';
+        }
+        // Check if this is a bullet point (starts with - or •)
+        else if (line.startsWith('- ') || line.startsWith('• ')) {
+            if (!inList && !inSubList) {
+                html += '<ul>';
+                inList = true;
+            }
+            const content = line.replace(/^[-•]\s+/, '').trim();
+            html += `<li>${escapeHtml(content)}</li>`;
+        }
+        // Regular paragraph
+        else {
+            if (inSubList) {
+                html += '</ul></div>';
+                inSubList = false;
+            }
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            html += `<p>${escapeHtml(line)}</p>`;
+        }
+    }
+    
+    if (inSubList) {
+        html += '</ul></div>';
+    }
+    if (inList) {
+        html += '</ul>';
+    }
+    
+    // Close the last section if exists
+    if (sectionCount > 0) {
+        html += '</div></div>'; // Close section-content and section-wrapper
+    }
+    
+    return html;
+}
+
+// Format structured output (JSON format)
+function formatStructuredOutput(data) {
+    let html = '';
+    
+    if (data.summary && data.summary.length > 0) {
+        html += '<h2>📋 Summary</h2><ul>';
+        data.summary.forEach(item => {
+            html += `<li>${escapeHtml(item)}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (data.actions && data.actions.length > 0) {
+        html += '<h2>✅ Actions Needed</h2><ul>';
+        data.actions.forEach(action => {
+            const task = action.task || 'Not specified';
+            const when = action.when || 'Not specified';
+            const who = action.who || 'Not specified';
+            html += `<li><strong>${escapeHtml(task)}</strong> - When: ${escapeHtml(when)} | Who: ${escapeHtml(who)}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (data.medications && data.medications.length > 0) {
+        html += '<h2>💊 Medications Explained</h2><ul>';
+        data.medications.forEach(med => {
+            const name = med.name || 'Not specified';
+            const why = med.why || 'Not specified';
+            const how = med.how_to_take || 'Not specified';
+            html += `<li><strong>${escapeHtml(name)}</strong>: ${escapeHtml(why)}. ${escapeHtml(how)}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    if (data.glossary && data.glossary.length > 0) {
+        html += '<h2>📖 Glossary</h2><ul>';
+        data.glossary.forEach(term => {
+            const termName = term.term || 'Not specified';
+            const plain = term.plain || 'Not specified';
+            html += `<li><strong>${escapeHtml(termName)}</strong>: ${escapeHtml(plain)}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    return html;
+}
+
+// Format section titles with emojis
+function formatSectionTitle(title) {
+    // If title already has an emoji, preserve it
+    if (title.match(/^[📋✅💊⚠️📖]/)) {
+        return title;
+    }
+    
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('summary')) return '📋 Summary';
+    if (titleLower.includes('action')) return '✅ Actions Needed';
+    if (titleLower.includes('medication')) return '💊 Medications Explained';
+    if (titleLower.includes('safety')) return '⚠️ Safety Information';
+    if (titleLower.includes('glossary') || titleLower.includes('term')) return '📖 Glossary';
+    return title;
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Utility Functions
@@ -230,4 +422,3 @@ function hideMessages() {
 function hideResults() {
     resultsSection.style.display = 'none';
 }
-
