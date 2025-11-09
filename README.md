@@ -1,157 +1,254 @@
-# MD-Hackathon: Medical Note Simplification
+# Medical Note Simplifier
 
-Convert complex medical discharge notes into patient-friendly language using JSL-MedLlama-3-8B-v2.0.
+A web application that simplifies complex medical discharge notes into patient-friendly language using AI. Built with Flask, Hugging Face Inference API, and Firestore.
 
-## Architecture
+## 🚀 Quick Start - Step by Step
+
+### Step 1: Clone the Repository
+```bash
+git clone <repository-url>
+cd MD-Hackathon
+```
+
+### Step 2: Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Step 3: Set Up Environment Variables
+**For environment variables and credentials, please contact Deep (deep) to get access to:**
+- `FIREBASE_CREDENTIALS_PATH`: Path to Firebase service account JSON file
+- `HF_TOKEN`: Your Hugging Face API token
+
+Create a `.env` file in the root directory:
+```bash
+FIREBASE_CREDENTIALS_PATH=./credentials/firebase-service-account.json
+HF_TOKEN=your_huggingface_token_here
+```
+
+### Step 4: Run the Application
+```bash
+python run.py
+```
+
+The application will start on `http://localhost:5000`
+
+### Step 5: Access the Web Interface
+Open your browser and navigate to:
+```
+http://localhost:5000
+```
+
+Enter a Note ID and HADM ID from Firestore, then click "Simplify Note" to see the simplified output.
+
+---
+
+## 📋 Overview
+
+This application transforms complex medical discharge notes into patient-friendly language that a 6th-8th grade reading level can understand. It uses the JSL-MedLlama-3-8B-v2.0 model via Hugging Face Inference API to simplify medical terminology and structure information in an easy-to-understand format.
+
+## 🏗️ Architecture
 
 ```
 Firestore (Processed Notes)
     ↓
-[Fetch via Firestore Client]
+[Firestore Client] → Fetch discharge notes
     ↓
-[Sectionizer] → [Prompt Builder] → [MedLlama-3 via HF API] → [Post-Processor]
+[Sectionizer] → Extract and organize note sections
     ↓
-[Simplified Output: JSON with summary, actions, medications, glossary]
+[Prompt Builder] → Create prompts with Llama 3 chat template format
+    ↓
+[MedLlama-3 via HF API] → Generate simplified output
+    ↓
+[Frontend] → Display formatted results
 ```
 
-## Quick Start
-
-### 1. Setup Environment
-
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment template
-cp .env.example .env
-
-# Edit .env and add your credentials:
-# - FIREBASE_CREDENTIALS_PATH: Path to Firebase service account JSON
-# - HF_TOKEN: Your Hugging Face API token
-```
-
-### 2. Setup Hugging Face
-
-1. Get your API token from [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-2. Add it to `.env` file: `HF_TOKEN=your_token_here`
-3. See [HUGGINGFACE_SETUP.md](HUGGINGFACE_SETUP.md) for detailed instructions
-
-### 3. Setup Firebase Credentials
-
-1. Copy your Firebase service account JSON to `credentials/` directory
-2. Update `.env` with the path: `FIREBASE_CREDENTIALS_PATH=./credentials/your-file.json`
-
-### 4. Run Example
-
-**Terminal/Command Line:**
-```bash
-python example_usage.py
-```
-
-**Streamlit UI (Recommended for Demo):**
-```bash
-streamlit run src/ui_app.py
-```
-
-Or use the helper script:
-```bash
-python run_ui.py
-```
-
-The UI will open in your browser at `http://localhost:8501`
-
-## Why We Use Hugging Face Inference API (Not Local Model)
-
-**We're using the API approach** (not loading the model locally) because:
-
-1. ✅ **Your MacBook Air M2 (8GB RAM)** can't handle an 8B parameter model locally
-2. ✅ **No infrastructure setup** - just API calls
-3. ✅ **Fast to get started** - perfect for hackathon
-4. ✅ **Reliable** - managed by Hugging Face
-5. ✅ **Cost-effective** - pay per request (~$0.01-0.05 per note)
-
-**The code uses `requests` to call the API** - no need for `transformers` or `pipeline` locally!
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 MD-Hackathon/
 ├── src/
-│   ├── firestore_client.py    # Fetch notes from Firestore
-│   ├── prompts.py             # Heavy prompt engineering
-│   ├── model_client.py        # Hugging Face Inference API client
-│   ├── pipeline.py            # Main orchestration
-│   └── checks.py              # Validation & metrics (coming soon)
-├── credentials/               # Firebase service account JSON (gitignored)
-├── data/                      # MIMIC-IV data (when available)
-├── output/                    # Processed results
-├── example_usage.py           # Example script
-├── requirements.txt           # Dependencies
-├── .env                       # Environment variables (gitignored)
-└── README.md                  # This file
+│   ├── firestore_client.py      # Firestore database client
+│   ├── model_client.py          # Hugging Face Inference API client
+│   ├── pipeline.py              # Main orchestration pipeline
+│   ├── prompts.py               # Prompt engineering for MedLlama-3
+│   ├── sectionizer.py            # Extract sections from medical notes
+│   └── on_demand_processor.py  # On-demand note processing
+├── static/
+│   ├── css/
+│   │   └── style.css            # Frontend styling
+│   └── js/
+│       └── main.js              # Frontend JavaScript logic
+├── templates/
+│   └── index.html               # Main web interface
+├── data_preprocessing/          # Data preprocessing scripts
+├── app.py                       # Flask application
+├── run.py                       # Application entry point
+├── requirements.txt             # Python dependencies
+└── README.md                    # This file
 ```
 
-## Components
+## 🔧 Components
 
 ### 1. Firestore Client (`src/firestore_client.py`)
-- Fetches processed discharge notes from Firestore
-- Supports single note, batch, and filtered queries
+- Fetches processed discharge notes from Firestore database
+- Supports single note queries by Note ID and HADM ID
+- Handles batch operations and filtering
 
-### 2. Prompt Builder (`src/prompts.py`)
+### 2. Model Client (`src/model_client.py`)
+- Communicates with Hugging Face Inference API
+- Uses Llama 3 chat template format: `<|begin_of_text|><|start_header_id|>system<|end_header_id|>...`
+- Handles API calls, error handling, and response parsing
+- Model: `johnsnowlabs/JSL-MedLlama-3-8B-v2.0`
+
+### 3. Prompt Builder (`src/prompts.py`)
 - Heavy prompt engineering for patient-friendly output
-- System prompt with strict rules (6th-8th grade reading level)
+- System prompt with strict simplification rules
 - User template with structured sections
-
-### 3. Model Client (`src/model_client.py`)
-- Calls Hugging Face Inference API
-- Handles retries, rate limiting, model loading
-- No local model loading required!
+- Formats prompts using Llama 3 chat template format
 
 ### 4. Pipeline (`src/pipeline.py`)
-- Orchestrates: Fetch → Prompt → LLM → Output
-- Returns structured JSON with simplified note
+- Main orchestration: Fetch → Sectionize → Prompt → LLM → Output
+- Processes medical notes end-to-end
+- Returns simplified output in structured format
 
-## Usage
+### 5. Sectionizer (`src/sectionizer.py`)
+- Extracts structured sections from raw medical notes
+- Identifies: Diagnoses, Hospital Course, Medications, Allergies, etc.
+- Organizes content for prompt building
 
+## 🎯 Features
+
+### Web Interface
+- **Clean, modern UI** with collapsible sections
+- **Real-time processing** of medical notes
+- **Formatted output** with emojis and clear structure
+- **Test mode** for demonstration without API calls
+
+### Output Format
+The simplified output includes:
+- **📋 Summary**: 3-5 bullet points explaining what happened during the hospital stay
+- **✅ Actions Needed**: What the patient needs to do after discharge
+- **💊 Medications Explained**: Each medication with what it does and how to take it
+- **⚠️ Safety Information**: Allergies and warning signs
+- **📖 Glossary**: Medical terms defined in simple language
+
+## 🔑 Environment Variables
+
+**Contact Deep (deep) to obtain the following environment variables:**
+
+- `FIREBASE_CREDENTIALS_PATH`: Path to Firebase service account JSON file
+- `HF_TOKEN`: Hugging Face API token for accessing MedLlama-3 model
+
+## 📦 Dependencies
+
+Key dependencies:
+- `flask>=3.0.0` - Web framework
+- `google-cloud-firestore>=2.13.0` - Firestore database client
+- `huggingface_hub>=0.20.0` - Hugging Face API client
+- `python-dotenv>=1.0.0` - Environment variable management
+- `pandas>=2.0.0` - Data processing
+- `textstat>=0.7.3` - Readability metrics
+
+See `requirements.txt` for complete list.
+
+## 🚀 Usage
+
+### Web Application
+1. Start the Flask server: `python run.py`
+2. Open browser to `http://localhost:5000`
+3. Enter Note ID and HADM ID
+4. Click "Simplify Note"
+5. View the simplified output
+
+### API Endpoint
+```bash
+POST /api/simplify
+Content-Type: application/json
+
+{
+  "note_id": "10000032-DS-21",
+  "hadm_id": "22595853"
+}
+```
+
+### Python API
 ```python
 from src.pipeline import SimplificationPipeline
 
-# Initialize
+# Initialize pipeline
 pipeline = SimplificationPipeline(
-    firestore_credentials_path="./credentials/firebase.json",
-    hf_api_token="your_hf_token"
+    firestore_credentials_path=os.getenv("FIREBASE_CREDENTIALS_PATH"),
+    hf_api_token=os.getenv("HF_TOKEN")
 )
 
 # Process a note
-result = pipeline.process_note("note_id_123")
+result = pipeline.process_note(
+    note_id="10000032-DS-21",
+    hadm_id="22595853"
+)
 
-# Check result
-if result["error"]:
-    print(f"Error: {result['error']}")
-else:
-    print(result["parsed_output"])  # Simplified JSON
+# Access simplified output
+if result.get("simplified_output"):
+    print(result["simplified_output"])
 ```
 
-## UI Features
+## 🧪 Testing
 
-The Streamlit UI provides:
-- 📝 **Input Form**: Enter Note ID from Firestore
-- 📋 **Plain Summary**: Bullet points of what happened
-- ✅ **What To Do Next**: Actions with timeline and who to contact
-- 💊 **Your Medications**: Detailed medication information
-- 📖 **Terms Explained**: Glossary of medical terms
-- 📊 **Reading Level**: Grade level indicator
+The application includes a "Test Mode" checkbox that uses sample output without making API calls. This is useful for:
+- Testing the frontend interface
+- Demonstrating the application
+- Avoiding API costs during development
 
-## Next Steps
+## 🔒 Security Notes
 
-- [ ] Add sectionizer for raw note text
-- [ ] Add post-processor (JSON validation, readability checks)
-- [ ] Add FastAPI endpoint
-- [x] Add Streamlit UI ✅
-- [ ] Add GCS storage for results
+- Environment variables are stored in `.env` (gitignored)
+- Firebase credentials should never be committed
+- API tokens should be kept secure
+- Raw data directories (`raw_notes/`, `raw_dataset/`) are gitignored
 
-## Resources
+## 📊 Data Processing
 
-- [MIMIC-IV-Note Dataset](https://physionet.org/content/mimic-iv-note/2.2/)
-- [JSL-MedLlama-3-8B-v2.0 Model](https://huggingface.co/johnsnowlabs/JSL-MedLlama-3-8B-v2.0)
-- [Hugging Face Setup Guide](HUGGINGFACE_SETUP.md)
+The repository includes scripts for processing medical notes:
+- `upload_all_patients.py` - Upload processed notes to Firestore
+- `process_18k_single_hadm_patients.py` - Process large batches of patients
+- `data_preprocessing/` - Various preprocessing utilities
+
+## 🐛 Troubleshooting
+
+### Application won't start
+- Check that all dependencies are installed: `pip install -r requirements.txt`
+- Verify environment variables are set correctly
+- Ensure port 5000 is not in use
+
+### API errors
+- Verify `HF_TOKEN` is valid and has API access
+- Check Hugging Face API status
+- Review API rate limits
+
+### Firestore connection issues
+- Verify `FIREBASE_CREDENTIALS_PATH` points to valid credentials file
+- Check Firebase project permissions
+- Ensure Firestore database is accessible
+
+## 📝 Model Details
+
+- **Model**: JSL-MedLlama-3-8B-v2.0 (Johnsnowlabs)
+- **Format**: Llama 3 chat template with special tokens
+- **API**: Hugging Face Inference API
+- **Input**: Structured medical note sections
+- **Output**: Simplified patient-friendly language
+
+## 🤝 Contributing
+
+For questions or issues, contact Deep (deep).
+
+## 📄 License
+
+See LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- MIMIC-IV-Note Dataset
+- Johnsnowlabs for MedLlama-3 model
+- Hugging Face for Inference API
