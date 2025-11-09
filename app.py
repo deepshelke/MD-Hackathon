@@ -43,16 +43,11 @@ def simplify_note():
         data = request.get_json()
         note_id = data.get('note_id', '').strip()
         hadm_id = data.get('hadm_id', '').strip()
-        note_text = data.get('note_text', '').strip()  # For test mode
-        
-        # Test mode: if note_text is provided, use it directly
-        if note_text:
-            return simplify_text_directly(note_text)
         
         if not note_id or not hadm_id:
             return jsonify({
                 'success': False,
-                'error': 'Both Note ID and HADM ID are required. If you want to test with sample text, provide note_text instead.'
+                'error': 'Both Note ID and HADM ID are required.'
             }), 400
         
         # Get pipeline and process note
@@ -77,11 +72,11 @@ def simplify_note():
                 if "not found in Firestore" in error_msg:
                     error_msg = f"Note '{note_id}' not found in Firestore. Please check:\n1. The Note ID is correct\n2. Your teammate has added data to Firestore\n3. The collection name is correct"
                 elif "API requires payment" in error_msg or "free tier limit" in error_msg.lower():
-                    error_msg = "Hugging Face API free tier limit reached. Please add API credits or use Test Mode to see sample output."
+                    error_msg = "Hugging Face API free tier limit reached. Please add API credits."
                 elif "402" in error_msg or "Payment Required" in error_msg:
-                    error_msg = "Hugging Face API requires payment. Please add API credits or use Test Mode to see sample output."
+                    error_msg = "Hugging Face API requires payment. Please add API credits."
                 elif "empty response" in error_msg.lower():
-                    error_msg = "Model returned empty response. Please try again or use Test Mode to see sample output."
+                    error_msg = "Model returned empty response. Please try again."
                 return jsonify({
                     'success': False,
                     'error': error_msg
@@ -91,7 +86,7 @@ def simplify_note():
         if not simplified_output or len(simplified_output.strip()) == 0:
             return jsonify({
                 'success': False,
-                'error': 'Model returned empty response. Please try again or use Test Mode to see sample output.'
+                'error': 'Model returned empty response. Please try again.'
             }), 400
         
         # Return the simplified output directly
@@ -179,86 +174,6 @@ def parse_text_to_structure(text):
             })
     
     return result
-
-def simplify_text_directly(note_text):
-    """Simplify note text directly without Firestore (test mode)."""
-    try:
-        from src.prompts import PromptBuilder
-        from src.model_client import HuggingFaceClient
-        
-        # Create simple sections from text
-        sections = {
-            "Diagnoses": note_text,
-            "Hospital Course": "",
-            "Discharge Medications": "",
-            "Follow-up": "",
-            "Allergies": "",
-            "Pending Tests": "",
-            "Diet/Activity": ""
-        }
-        
-        # Build prompts
-        prompt_builder = PromptBuilder()
-        prompts = prompt_builder.build_full_prompt(sections)
-        
-        # Call LLM
-        hf_client = HuggingFaceClient(
-            model_name="johnsnowlabs/JSL-MedLlama-3-8B-v2.0",
-            api_token=os.getenv("HF_TOKEN")
-        )
-        
-        simplified_output = hf_client.simplify_note(
-            system_prompt=prompts["system"],
-            user_prompt=prompts["user"],
-            max_tokens=900,
-            temperature=0.2
-        )
-        
-        # Try to parse JSON with multiple strategies
-        output = None
-        cleaned = simplified_output.strip()
-        
-        # Strategy 1: Remove markdown code blocks
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        if cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-        
-        # Strategy 2: Try to find JSON object in the text
-        try:
-            # Try direct parsing first
-            output = json.loads(cleaned)
-        except json.JSONDecodeError:
-            # Try to extract JSON from text
-            import re
-            # Look for JSON object pattern
-            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', cleaned, re.DOTALL)
-            if json_match:
-                try:
-                    output = json.loads(json_match.group(0))
-                except:
-                    pass
-            
-            # If still no JSON, try to extract structured information from text
-            if output is None:
-                # Try to parse the text and extract information
-                output = parse_text_to_structure(cleaned)
-                output["_raw_output"] = simplified_output
-                output["_note"] = "Model output was not in JSON format. Extracted information from text."
-        
-        return jsonify({
-            'success': True,
-            'data': output
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Test mode error: {str(e)}'
-        }), 500
 
 @app.route('/health')
 def health():

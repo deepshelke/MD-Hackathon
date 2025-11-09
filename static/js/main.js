@@ -1,83 +1,34 @@
 // DOM Elements
 const noteIdInput = document.getElementById('noteIdInput');
 const hadmIdInput = document.getElementById('hadmIdInput');
-const testModeToggle = document.getElementById('testModeToggle');
 const simplifyBtn = document.getElementById('simplifyBtn');
 const errorMessage = document.getElementById('errorMessage');
 const successMessage = document.getElementById('successMessage');
 const resultsSection = document.getElementById('resultsSection');
 const outputContent = document.getElementById('outputContent');
 
-// Sample output for test mode (from our actual test)
-const SAMPLE_OUTPUT = `Here is the simplified version of the medical discharge note:
-
-Summary:
-- You have ascites, which is fluid buildup in your abdomen, caused by portal hypertension due to liver disease.
-- You were hospitalized because of worsening abdominal distension and discomfort, as well as confusion.
-- You were started on diuretics (Furosemide and Spironolactone) to help reduce the fluid buildup.
-- You need to follow up with your primary care physician and a liver specialist for further evaluation and treatment.
-
-Actions Needed:
-- Take Furosemide 40 mg by mouth daily as prescribed.
-- Take Spironolactone 50 mg by mouth daily as prescribed.
-- Follow a diet recommended by your doctor to manage your condition.
-- Attend follow-up appointments with your primary care physician and liver specialist as scheduled.
-- Monitor for any signs of worsening symptoms or side effects from medications.
-
-Medications Explained:
-- Furosemide: This medication helps reduce fluid buildup in your body. Take it by mouth once daily as prescribed.
-- Spironolactone: This medication also helps reduce fluid buildup in your body. Take it by mouth once daily as prescribed.
-- Both medications may cause side effects such as dizziness, weakness, or electrolyte imbalances. If you experience any concerning symptoms, contact your doctor.
-
-Glossary:
-- Ascites: Fluid buildup in the abdomen.
-- Portal Hypertension: Increased pressure in the portal vein, which carries blood from the intestines to the liver.
-- Diuretics: Medications that help remove excess fluid from the body.
-- Liver Disease: Damage to the liver, which can lead to various complications such as ascites.
-- Primary Care Physician: Your regular doctor who provides ongoing medical care.
-- Liver Specialist: A doctor who specializes in treating liver diseases.`;
-
 // Event Listeners
 simplifyBtn.addEventListener('click', handleSimplify);
 noteIdInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !testModeToggle.checked) {
+    if (e.key === 'Enter') {
         handleSimplify();
     }
 });
 hadmIdInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !testModeToggle.checked) {
+    if (e.key === 'Enter') {
         handleSimplify();
-    }
-});
-testModeToggle.addEventListener('change', (e) => {
-    if (e.target.checked) {
-        noteIdInput.placeholder = 'Note ID (test mode - will use sample)';
-        hadmIdInput.placeholder = 'HADM ID (test mode - will use sample)';
-    } else {
-        noteIdInput.placeholder = 'Note ID (e.g., 10000032-DS-21)';
-        hadmIdInput.placeholder = 'HADM ID (e.g., 22595853)';
     }
 });
 
 // Handle Simplify Button Click
 async function handleSimplify() {
-    const isTestMode = testModeToggle.checked;
     const noteId = noteIdInput.value.trim();
     const hadmId = hadmIdInput.value.trim();
     
     // Validation
-    if (isTestMode) {
-        // Test mode: use sample output
-        hideMessages();
-        hideResults();
-        showSuccess();
-        displayResults({ simplified_output: SAMPLE_OUTPUT });
+    if (!noteId || !hadmId) {
+        showError('Please enter both Note ID and HADM ID');
         return;
-    } else {
-        if (!noteId || !hadmId) {
-            showError('Please enter both Note ID and HADM ID');
-            return;
-        }
     }
     
     // Hide previous results and messages

@@ -123,7 +123,6 @@ MD-Hackathon/
 - **Clean, modern UI** with collapsible sections
 - **Real-time processing** of medical notes
 - **Formatted output** with emojis and clear structure
-- **Test mode** for demonstration without API calls
 
 ### Output Format
 The simplified output includes:
@@ -195,10 +194,7 @@ if result.get("simplified_output"):
 
 ## 🧪 Testing
 
-The application includes a "Test Mode" checkbox that uses sample output without making API calls. This is useful for:
-- Testing the frontend interface
-- Demonstrating the application
-- Avoiding API costs during development
+The application processes real medical notes from Firestore. Enter a valid Note ID and HADM ID to test the simplification functionality.
 
 ## 🔒 Security Notes
 
