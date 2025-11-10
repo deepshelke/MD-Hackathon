@@ -22,12 +22,19 @@ def get_pipeline():
     global pipeline
     if pipeline is None:
         try:
+            hf_token = os.getenv("HF_TOKEN")
+            firebase_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+            
+            if not hf_token:
+                raise Exception("HF_TOKEN environment variable is not set")
+            
             pipeline = SimplificationPipeline(
-                firestore_credentials_path=os.getenv("FIREBASE_CREDENTIALS_PATH"),
-                hf_api_token=os.getenv("HF_TOKEN"),
+                firestore_credentials_path=firebase_path,
+                hf_api_token=hf_token,
                 hf_model_name="johnsnowlabs/JSL-MedLlama-3-8B-v2.0"
             )
         except Exception as e:
+            print(f"ERROR: Failed to initialize pipeline: {str(e)}")
             raise Exception(f"Failed to initialize pipeline: {str(e)}")
     return pipeline
 
@@ -101,12 +108,25 @@ def simplify_note():
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error in simplify_note: {str(e)}")
+        error_msg = str(e)
+        
+        # Log error for debugging
+        print(f"ERROR in simplify_note: {error_msg}")
         print(f"Traceback: {error_details}")
+        
+        # Provide user-friendly error messages
+        if "Failed to initialize pipeline" in error_msg:
+            user_error = "Server configuration error. Please check server logs."
+        elif "HF_TOKEN" in error_msg or "environment variable" in error_msg.lower():
+            user_error = "Configuration error: Missing environment variables."
+        elif "Firebase" in error_msg or "FIREBASE" in error_msg:
+            user_error = "Configuration error: Firebase credentials not set."
+        else:
+            user_error = f"An error occurred: {error_msg}"
+        
         return jsonify({
             'success': False,
-            'error': str(e),
-            'details': error_details if app.debug else None
+            'error': user_error
         }), 500
 
 def parse_text_to_structure(text):

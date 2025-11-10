@@ -10,13 +10,15 @@ MAX_PROMPT_LENGTH = 10000  # Increased default, but trimming logic still works i
 class PromptBuilder:
     """Builds system and user prompts for CareNotes - medical note simplification."""
     
-    SYSTEM_PROMPT = """You are a medical communication specialist. Simplify medical discharge notes into patient-friendly language that anyone can understand.
+    SYSTEM_PROMPT = """You are a medical communication specialist. Your job is to simplify medical discharge notes into patient-friendly language that a 6th-8th grader can understand.
 
-Read the medical note below and explain it in simple, everyday words. Use the format specified in the user message."""
+IMPORTANT: You MUST SIMPLIFY and EXPLAIN the medical information provided in the user message. Do NOT just copy the sections. Transform the medical language into simple, everyday words. The medical note IS provided in the user message - read it carefully and simplify it."""
 
-    USER_TEMPLATE = """Simplify this medical discharge note for a patient. Read the note below and explain everything in simple, everyday language.
+    USER_TEMPLATE = """Read the medical discharge note below and simplify it for the patient. Explain everything in simple, everyday language.
 
-IMPORTANT: Do NOT just copy the sections. SIMPLIFY and EXPLAIN each part in patient-friendly language.
+IMPORTANT: The medical note is provided below. You MUST read it and simplify it. Do NOT ask for the note - it is already here. Do NOT just copy the sections - SIMPLIFY and EXPLAIN each part.
+
+=== MEDICAL DISCHARGE NOTE ===
 
 Medical Note:
 
@@ -59,7 +61,9 @@ Medical Note:
 [Discharge Instructions]
 {discharge_instructions}
 
-Now simplify this note. Provide your response in this format:
+=== END OF MEDICAL DISCHARGE NOTE ===
+
+Now simplify this note. The note is provided above - read it and simplify it. Provide your response in this format:
 
 📋 Summary
 - The patient was admitted to the hospital with [condition]. They were treated with [treatment]. They are being discharged [disposition].
