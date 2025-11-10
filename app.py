@@ -43,6 +43,22 @@ def index():
     """Render the main page."""
     return render_template('index.html')
 
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors gracefully."""
+    return jsonify({
+        'success': False,
+        'error': 'Internal server error. Please try again later.'
+    }), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle all exceptions gracefully."""
+    return jsonify({
+        'success': False,
+        'error': f'An error occurred: {str(e)}'
+    }), 500
+
 @app.route('/api/simplify', methods=['POST'])
 def simplify_note():
     """API endpoint to simplify a medical note."""

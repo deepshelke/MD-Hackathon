@@ -153,7 +153,7 @@ class SimplificationPipeline:
             simplified_output = self.hf_client.simplify_note(
                 system_prompt=prompts["system"],
                 user_prompt=prompts["user"],
-                max_tokens=2000,  # Increased for longer responses
+                max_tokens=1500,  # Reduced to save memory
                 temperature=0.2
             )
             
