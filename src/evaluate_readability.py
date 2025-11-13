@@ -252,49 +252,72 @@ def main():
     # Check for existing results
     existing_df, processed_set = load_existing_results(args.output) if args.resume else (None, set())
     
-    # Step 1: Generate reproducible list of indices
-    print(f"\nStep 1: Generating reproducible list of {args.n} patient indices...")
-    indices = generate_reproducible_indices(n=args.n, max_val=args.max_val, seed=args.seed)
-    print(f"Selected indices: {indices}")
+    # Step 1: Generate a larger pool of indices for retry capability
+    # Generate 3x the requested number to have backup patients if some fail
+    pool_size = max(args.n * 3, 60)  # At least 60 patients in pool
+    print(f"\nStep 1: Generating patient pool of {pool_size} indices for retry capability...")
+    all_indices = generate_reproducible_indices(n=pool_size, max_val=args.max_val, seed=args.seed)
+    print(f"Generated pool of {len(all_indices)} patient indices")
     
     # Step 2: Load patients list
     print("\nStep 2: Loading patients list...")
     patients_df = load_patients_list()
     
     # Verify we have enough patients
-    if len(patients_df) < max(indices):
+    if len(patients_df) < max(all_indices):
         print(f"Warning: patients_list.csv only has {len(patients_df)} rows, "
-              f"but we need at least {max(indices)} rows")
+              f"but we need at least {max(all_indices)} rows")
         # Adjust indices to fit available data
-        indices = [i for i in indices if i <= len(patients_df)]
-        print(f"Adjusted indices to: {indices}")
+        all_indices = [i for i in all_indices if i <= len(patients_df)]
+        print(f"Adjusted indices to: {len(all_indices)} indices")
     
-    # Select patients based on indices (adjusting for 0-based indexing)
-    selected_patients = patients_df.iloc[[i-1 for i in indices]].copy()
-    print(f"Selected {len(selected_patients)} patients")
+    # Create a pool of all available patients
+    all_patients_pool = patients_df.iloc[[i-1 for i in all_indices]].copy()
+    print(f"Created pool of {len(all_patients_pool)} patients for selection")
     
     # Filter out already processed patients if resuming
     if args.resume and processed_set:
-        initial_count = len(selected_patients)
-        selected_patients = selected_patients[
-            ~selected_patients.apply(lambda row: (row['note_id'], row['hadm_id']) in processed_set, axis=1)
+        initial_count = len(all_patients_pool)
+        all_patients_pool = all_patients_pool[
+            ~all_patients_pool.apply(lambda row: (row['note_id'], row['hadm_id']) in processed_set, axis=1)
         ]
-        skipped = initial_count - len(selected_patients)
+        skipped = initial_count - len(all_patients_pool)
         if skipped > 0:
-            print(f"Skipping {skipped} already processed patients")
-            print(f"Remaining: {len(selected_patients)} patients to process")
+            print(f"Skipping {skipped} already processed patients from pool")
+            print(f"Remaining in pool: {len(all_patients_pool)} patients")
     
-    if len(selected_patients) == 0:
-        print("\n✅ All patients have already been processed!")
+    if len(all_patients_pool) == 0:
+        print("\n✅ All patients in pool have already been processed!")
         if existing_df is not None:
             print(f"Results available in: {args.output}")
         return
     
+    # Calculate how many we need
+    target_count = args.n
+    # Count successful patients from existing results
+    if existing_df is not None:
+        # Filter out rows with errors
+        successful_df = existing_df[existing_df['error'].isna() | (existing_df['error'] == '')]
+        successful_count = len(successful_df)
+    else:
+        successful_count = 0
+    needed_count = target_count - successful_count
+    
+    if needed_count <= 0:
+        print(f"\n✅ Already have {successful_count} successful patients (target: {target_count})!")
+        return
+    
+    print(f"\nTarget: {target_count} successful patients")
+    print(f"Already have: {successful_count} successful patients")
+    print(f"Need to process: {needed_count} more patients")
+    print(f"Available in pool: {len(all_patients_pool)} patients")
+    
     # Confirmation prompt
     if not args.yes:
-        print(f"\n⚠️  WARNING: This will make {len(selected_patients)} API calls to Hugging Face!")
-        print(f"   Estimated cost: ~{len(selected_patients)} API calls")
-        response = input(f"\nProceed with processing {len(selected_patients)} patients? (yes/no): ")
+        print(f"\n⚠️  WARNING: This will make up to {needed_count * 2} API calls to Hugging Face!")
+        print(f"   (Processing {needed_count} patients with retry capability)")
+        print(f"   Estimated cost: ~{needed_count * 2} API calls (some may fail and retry)")
+        response = input(f"\nProceed with processing up to {needed_count} patients? (yes/no): ")
         if response.lower() not in ['yes', 'y']:
             print("Cancelled.")
             return
@@ -312,15 +335,51 @@ def main():
         print("Make sure your .env file contains valid FIREBASE_CREDENTIALS_PATH and HF_TOKEN")
         sys.exit(1)
     
-    # Step 4 & 5: Process each patient and calculate readability scores
-    print("\nStep 4-5: Processing patients and calculating readability scores...")
+    # Step 4 & 5: Process patients with retry logic until we have enough successful results
+    print("\nStep 4-5: Processing patients with retry capability...")
     results = list(existing_df.to_dict('records')) if existing_df is not None else []
     
-    for patient_num, (idx, row) in enumerate(selected_patients.iterrows(), 1):
+    # Track which patients we've tried (to avoid duplicates)
+    tried_patients = set()
+    if existing_df is not None:
+        tried_patients = set(zip(existing_df['note_id'], existing_df['hadm_id']))
+    
+    # Track successful vs failed
+    # Count successful: rows where error is None, empty, or NaN
+    def is_successful(result_row):
+        error_val = result_row.get('error')
+        if error_val is None:
+            return True
+        if isinstance(error_val, str):
+            return len(error_val.strip()) == 0
+        try:
+            return pd.isna(error_val)
+        except:
+            return False
+    
+    successful_processed = len([r for r in results if is_successful(r)])
+    failed_count = 0
+    patient_num = 0
+    
+    # Process patients from pool until we have enough successful ones
+    for idx, row in all_patients_pool.iterrows():
+        # Check if we have enough successful patients
+        if successful_processed >= target_count:
+            print(f"\n✅ Reached target of {target_count} successful patients!")
+            break
+        
         note_id = row['note_id']
         hadm_id = row['hadm_id']
+        patient_key = (note_id, hadm_id)
         
-        print(f"\nProcessing patient {patient_num}/{len(selected_patients)}: "
+        # Skip if already tried
+        if patient_key in tried_patients:
+            continue
+        
+        patient_num += 1
+        tried_patients.add(patient_key)
+        
+        print(f"\nProcessing patient {patient_num} (Successful so far: {successful_processed}/{target_count}): "
               f"note_id={note_id}, hadm_id={hadm_id}")
         
         try:
@@ -328,7 +387,9 @@ def main():
             result = pipeline.process_note(note_id=note_id, hadm_id=str(hadm_id))
             
             if 'error' in result and result['error']:
-                print(f"  Error processing note: {result['error']}")
+                error_msg = result['error']
+                print(f"  ❌ Error processing note: {error_msg}")
+                failed_count += 1
                 results.append({
                     'note_id': note_id,
                     'hadm_id': hadm_id,
@@ -338,9 +399,48 @@ def main():
                     'simplified_gunning_fog': None,
                     'has_placeholders': False,
                     'placeholder_count': 0,
-                    'error': result['error']
+                    'error': error_msg
                 })
+                # Save progress and continue to next patient
+                results_df = pd.DataFrame(results)
+                results_df.to_csv(args.output, index=False)
+                print(f"  💾 Progress saved. Will try next patient from pool...")
                 continue
+            
+            # Check if model refused (common refusal patterns)
+            simplified_text = result.get('simplified_output', '')
+            if simplified_text:
+                refusal_patterns = [
+                    "i'm sorry",
+                    "i cannot",
+                    "i can't",
+                    "cannot simplify",
+                    "too complex",
+                    "beyond my capabilities",
+                    "exceeds the character limit",
+                    "would be best to consult"
+                ]
+                is_refusal = any(pattern in simplified_text.lower()[:200] for pattern in refusal_patterns)
+                
+                if is_refusal:
+                    print(f"  ⚠️  Model refused to process this note. Will try next patient from pool...")
+                    failed_count += 1
+                    results.append({
+                        'note_id': note_id,
+                        'hadm_id': hadm_id,
+                        'original_flesch_reading_ease': None,
+                        'original_gunning_fog': None,
+                        'simplified_flesch_reading_ease': None,
+                        'simplified_gunning_fog': None,
+                        'has_placeholders': False,
+                        'placeholder_count': 0,
+                        'error': 'Model refused to process note'
+                    })
+                    # Save progress and continue to next patient
+                    results_df = pd.DataFrame(results)
+                    results_df.to_csv(args.output, index=False)
+                    print(f"  💾 Progress saved. Will try next patient from pool...")
+                    continue
             
             # Extract original and simplified text
             # Build original_note from input_sections if original_note not available
@@ -390,13 +490,23 @@ def main():
             print(f"  Simplified - Flesch: {simplified_scores['flesch_reading_ease']:.2f}, "
                   f"Gunning Fog: {simplified_scores['gunning_fog']:.2f}")
             
+            # Mark as successful
+            successful_processed += 1
+            
             # Save incrementally after each successful patient
             results_df = pd.DataFrame(results)
             results_df.to_csv(args.output, index=False)
+            print(f"  ✅ Success! ({successful_processed}/{target_count} successful patients)")
             print(f"  💾 Progress saved to {args.output}")
             
+            # Check if we've reached our target
+            if successful_processed >= target_count:
+                print(f"\n🎉 Reached target of {target_count} successful patients!")
+                break
+            
         except Exception as e:
-            print(f"  Unexpected error: {e}")
+            print(f"  ❌ Unexpected error: {e}")
+            failed_count += 1
             results.append({
                 'note_id': note_id,
                 'hadm_id': hadm_id,
@@ -411,7 +521,20 @@ def main():
             # Save even on error to preserve progress
             results_df = pd.DataFrame(results)
             results_df.to_csv(args.output, index=False)
-            print(f"  💾 Progress saved (with error) to {args.output}")
+            print(f"  💾 Progress saved. Will try next patient from pool...")
+            continue
+    
+    # Final summary
+    print(f"\n{'='*80}")
+    print(f"Processing Complete:")
+    print(f"  Successful: {successful_processed}/{target_count}")
+    print(f"  Failed: {failed_count}")
+    print(f"  Total attempted: {patient_num}")
+    print(f"{'='*80}")
+    
+    if successful_processed < target_count:
+        print(f"\n⚠️  Warning: Only {successful_processed} successful patients out of {target_count} target.")
+        print(f"   You may want to run again with a larger pool or different seed.")
     
     # Step 6: Final save (redundant but ensures everything is saved)
     print("\nStep 6: Final save to CSV...")
@@ -424,7 +547,8 @@ def main():
     print("SUMMARY STATISTICS")
     print("=" * 80)
     
-    successful = results_df[results_df['error'].isna()]
+    # Filter successful patients (no error or empty error)
+    successful = results_df[(results_df['error'].isna()) | (results_df['error'] == '')]
     if len(successful) > 0:
         print(f"\nSuccessfully processed: {len(successful)}/{len(results)} patients")
         
