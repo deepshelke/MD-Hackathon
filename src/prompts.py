@@ -261,4 +261,3 @@ Now simplify this note. The note is provided above - read it and simplify it. Pr
             "user": user_prompt,
             "total_length": total_length
         }
-

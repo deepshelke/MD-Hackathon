@@ -23,8 +23,9 @@ except ImportError:
 class HuggingFaceClient:
     """Client to interact with Hugging Face Inference API."""
     
-    def __init__(self, 
-                 model_name: str = "johnsnowlabs/JSL-MedLlama-3-8B-v2.0",
+    def __init__(self,
+                 ##where the model name is defined##
+                 model_name: str = "google/medgemma-27b",
                  api_token: Optional[str] = None,
                  endpoint_url: Optional[str] = None):
         """
