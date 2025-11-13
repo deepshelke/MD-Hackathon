@@ -25,7 +25,7 @@ class HuggingFaceClient:
     
     def __init__(self,
                  ##where the model name is defined##
-                 model_name: str = "google/medgemma-27b",
+                 model_name: str = "johnsnowlabs/JSL-MedLlama-3-8B-v2.0",
                  api_token: Optional[str] = None,
                  endpoint_url: Optional[str] = None):
         """

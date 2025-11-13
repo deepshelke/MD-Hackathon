@@ -150,11 +150,13 @@ class SimplificationPipeline:
             # Note: Prompt length limit removed - no longer checking against 7000 char limit
             
             # Step 4: Call LLM
+            # Lower temperature for more consistent, simpler outputs
+            # Higher max_tokens to allow for more detailed but simpler explanations
             simplified_output = self.hf_client.simplify_note(
                 system_prompt=prompts["system"],
                 user_prompt=prompts["user"],
-                max_tokens=1500,  # Reduced to save memory
-                temperature=0.2
+                max_tokens=2000,  # Increased to allow for more detailed simplification
+                temperature=0.1  # Lower temperature for more consistent, simpler language
             )
             
             result["simplified_output"] = simplified_output

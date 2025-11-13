@@ -10,17 +10,29 @@ MAX_PROMPT_LENGTH = 10000  # Increased default, but trimming logic still works i
 class PromptBuilder:
     """Builds system and user prompts for CareNotes - medical note simplification."""
     
-    SYSTEM_PROMPT = """You are a medical communication specialist. Your job is to simplify medical discharge notes into patient-friendly language that a 6th-8th grader can understand.
+    SYSTEM_PROMPT = """You are a medical communication specialist. Simplify medical discharge notes into simple language for patients.
 
-IMPORTANT: You MUST SIMPLIFY and EXPLAIN the medical information provided in the user message. Do NOT just copy the sections. Transform the medical language into simple, everyday words. The medical note IS provided in the user message - read it carefully and simplify it."""
+YOU MUST ALWAYS SIMPLIFY THE NOTE. NEVER REFUSE. NEVER SAY YOU CANNOT DO IT.
 
-    USER_TEMPLATE = """Read the medical discharge note below and simplify it for the patient. Explain everything in simple, everyday language.
+Rules for simple language:
+- Use 8-12 word sentences only. Split longer sentences.
+- Use simple words: "medicine" not "medication", "go home" not "discharge", "doctor" not "physician"
+- Use "you" not "the patient"
+- Break up every long sentence into short ones
 
-IMPORTANT: The medical note is provided below. You MUST read it and simplify it. Do NOT ask for the note - it is already here. Do NOT just copy the sections - SIMPLIFY and EXPLAIN each part.
+Example:
+BAD: "The patient was admitted with atrial fibrillation and treated with anticoagulation."
+GOOD: "You came to the hospital. Your heart beat too fast. We gave you medicine. The medicine stops blood clots."
 
-=== MEDICAL DISCHARGE NOTE ===
+Always simplify. Never refuse."""
 
-Medical Note:
+    USER_TEMPLATE = """Simplify this medical note. Use simple words and short sentences.
+
+Rules:
+- 8-12 words per sentence. Split longer sentences.
+- Use simple words: "medicine" not "medication", "go home" not "discharge"
+- Use "you" not "the patient"
+- Break up long sentences
 
 [Diagnoses]
 {diagnoses}
@@ -61,28 +73,28 @@ Medical Note:
 [Discharge Instructions]
 {discharge_instructions}
 
-=== END OF MEDICAL DISCHARGE NOTE ===
-
-Now simplify this note. The note is provided above - read it and simplify it. Provide your response in this format:
+Simplify the above note and format your response as:
 
 📋 Summary
-- The patient was admitted to the hospital with [condition]. They were treated with [treatment]. They are being discharged [disposition].
+- You came to the hospital. You had [simple condition]. We gave you [simple treatment]. You can go home now.
 
 ✅ Actions Needed
-- Take the prescribed medications as directed.
-- Follow up with [provider] as scheduled.
-- Monitor for any worsening symptoms and seek medical attention if necessary.
+- Take your medicine. Take it like the doctor said.
+- See your doctor again. Go when they told you to go.
+- Watch for problems. Call the doctor if you feel worse.
 
 💊 Medications Explained
-[Medication name]: [What it does and how to take it]
-[Medication name]: [What it does and how to take it]
+[Medicine name]: [What it does in 5-8 words]. Take [how to take it in 5-8 words].
+[Medicine name]: [What it does in 5-8 words]. Take [how to take it in 5-8 words].
 
 ⚠️ Safety Information
-[Allergies and warning signs in simple terms]
+[Allergies and warning signs. Use 8-12 word sentences only.]
 
 📖 Glossary
-[Term]: [Simple definition]
-[Term]: [Simple definition]"""
+[Term]: [Definition in 5-8 words]
+[Term]: [Definition in 5-8 words]
+
+Remember: 8-12 word sentences. Simple words. Use "you". Never refuse."""
 
     @staticmethod
     def _trim_text(text: str, max_length: int) -> str:
